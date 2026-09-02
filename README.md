@@ -9,11 +9,16 @@ This is a take-home assessment build. Scope is deliberately tight — see
 
 ## Setup
 
+Requires Python 3.10+ (built and tested on 3.12.3).
+
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/chintondutta/oncemore.git
+cd oncemore
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 cp .env.example .env   # then fill in your OPENAI_API_KEY
 export OPENAI_API_KEY=sk-...   # or export directly, .env is not auto-loaded
-python main.py
+.venv/bin/python main.py
 ```
 
 Type `exit` or `quit` to leave. The SQLite file (`oncemore.db`) is created
