@@ -1,12 +1,18 @@
 import os
 from pathlib import Path
 
+# Anchor .env and the DB to the project directory, not the process's
+# current working directory — needed because main.py is launched via the
+# `oncemore` command from arbitrary directories (see README), and relative
+# paths would otherwise scatter a fresh .env/oncemore.db wherever it's run.
+PROJECT_DIR = Path(__file__).resolve().parent
 
-def _load_dotenv(path=".env"):
+
+def _load_dotenv(path=None):
     # Minimal stdlib .env loader — avoids adding python-dotenv as a
     # dependency for one convenience feature. Doesn't override real
     # environment variables that are already set.
-    env_file = Path(path)
+    env_file = Path(path) if path else PROJECT_DIR / ".env"
     if not env_file.exists():
         return
     for line in env_file.read_text().splitlines():
@@ -29,7 +35,7 @@ PERSONA_MODEL = "gpt-4.1"          # main conversation / persona responses
 EXTRACTION_MODEL = "gpt-4.1-mini"  # extraction + contradiction-check calls
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-DB_PATH = os.environ.get("ONCEMORE_DB_PATH", "oncemore.db")
+DB_PATH = os.environ.get("ONCEMORE_DB_PATH", str(PROJECT_DIR / "oncemore.db"))
 
 RECENT_TURNS_WINDOW = 4  # user+assistant turn pairs kept in-process (PRD §6.2: 3-5 turns)
 TOP_K_FACTS = 5          # PRD §6.2

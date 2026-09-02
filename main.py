@@ -9,6 +9,14 @@ from embeddings import embed_text, vector_to_blob
 from extraction import extract_fact
 from retrieval import retrieve_relevant_facts
 
+# Plain ANSI codes, no terminal-UI dependency — keeps the stack at exactly
+# openai + numpy per PRD §4, this is display polish, not new architecture.
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+CYAN = "\033[36m"
+MAGENTA = "\033[35m"
+
 
 def load_persona_block(conn):
     rows = conn.execute("SELECT trait, value FROM persona").fetchall()
@@ -18,6 +26,19 @@ def load_persona_block(conn):
         "in every reply, no matter how long the conversation runs or what "
         "the user asks.\n\nPersona:\n" + "\n".join(lines)
     )
+
+
+def load_persona_name(conn):
+    row = conn.execute("SELECT value FROM persona WHERE trait = 'name'").fetchone()
+    return row["value"] if row else "companion"
+
+
+def print_banner(persona_name):
+    line = "─" * 44
+    print(f"{DIM}{line}{RESET}")
+    print(f"  {BOLD}oncemore{RESET}{DIM} · talking with {persona_name}{RESET}")
+    print(f"  {DIM}type 'exit' or 'quit' to leave{RESET}")
+    print(f"{DIM}{line}{RESET}\n")
 
 
 def build_memory_block(facts):
@@ -45,13 +66,14 @@ def main():
     client = OpenAI(api_key=OPENAI_API_KEY)
     conn = init_db()
     persona_block = load_persona_block(conn)
+    persona_name = load_persona_name(conn)
     recent_turns = []  # in-process only for now; see README on why this isn't persisted
 
-    print("Talking to your companion. Type 'exit' or 'quit' to leave.\n")
+    print_banner(persona_name)
 
     while True:
         try:
-            user_message = input("you> ").strip()
+            user_message = input(f"{CYAN}{BOLD}you{RESET} {DIM}›{RESET} ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             break
@@ -65,12 +87,21 @@ def main():
         memory_block = build_memory_block(relevant_facts)
 
         messages = build_messages(persona_block, memory_block, recent_turns, user_message)
-        response = client.chat.completions.create(
+        stream = client.chat.completions.create(
             model=PERSONA_MODEL,
             messages=messages,
+            stream=True,
         )
-        reply = response.choices[0].message.content
-        print(f"\ncompanion> {reply}\n")
+
+        print(f"\n{MAGENTA}{BOLD}{persona_name}{RESET} {DIM}›{RESET} ", end="", flush=True)
+        chunks = []
+        for event in stream:
+            delta = event.choices[0].delta.content
+            if delta:
+                print(delta, end="", flush=True)
+                chunks.append(delta)
+        print("\n")
+        reply = "".join(chunks)
 
         recent_turns.append({"role": "user", "content": user_message})
         recent_turns.append({"role": "assistant", "content": reply})
@@ -97,11 +128,11 @@ def remember_fact(client, conn, user_message):
     retired = resolve_fact(client, conn, fact, new_id, candidate)
     if retired is not None:
         print(
-            f"[memory: updated — retired \"{retired['value']}\", "
-            f"now {fact['subject']}.{fact['predicate']} = {fact['value']}]\n"
+            f"{DIM}[memory: updated — retired \"{retired['value']}\", "
+            f"now {fact['subject']}.{fact['predicate']} = {fact['value']}]{RESET}\n"
         )
     else:
-        print(f"[memory: {fact['subject']}.{fact['predicate']} = {fact['value']}]\n")
+        print(f"{DIM}[memory: {fact['subject']}.{fact['predicate']} = {fact['value']}]{RESET}\n")
 
 
 if __name__ == "__main__":

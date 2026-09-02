@@ -17,12 +17,30 @@ python main.py
 ```
 
 Type `exit` or `quit` to leave. The SQLite file (`oncemore.db`) is created
-next to the script on first run.
+in the project directory on first run. Persona replies stream
+token-by-token, with the user/persona prompts and `[memory: ...]` debug
+lines colored via plain ANSI codes (no terminal-UI dependency) — display
+polish only, no change to the underlying architecture.
+
+**Launch from anywhere as `oncemore`** (optional, like typing `claude`):
+
+```bash
+chmod +x oncemore
+ln -sf "$(pwd)/oncemore" ~/.local/bin/oncemore   # ~/.local/bin must be on PATH
+```
+
+Then just run `oncemore` from any directory. The wrapper script resolves
+its own real path and always uses this project's `.venv`, `.env`, and
+`oncemore.db` — `config.py` anchors the `.env` load and the DB path to the
+project directory (`Path(__file__).resolve().parent`) rather than the
+process's current working directory, specifically so launching from
+elsewhere doesn't scatter a fresh `.env`/`oncemore.db` whichever directory
+you happened to run it from.
 
 **Files**: `main.py` (chat loop + wiring), `db.py` (schema, connection,
 fact CRUD), `extraction.py` (§6.1), `retrieval.py` (§6.2), `decay.py`
 (§6.3), `embeddings.py` (embed / serialize helpers), `config.py` (env
-loading, model names, tunables).
+loading, model names, tunables), `oncemore` (shell launcher).
 
 ## Architecture
 
